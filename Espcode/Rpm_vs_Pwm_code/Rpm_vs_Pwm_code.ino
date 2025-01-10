@@ -1,54 +1,54 @@
-#define Motor1_Pin 2   // Encoder Pin for Motor 1 (must be interrupt-capable)
-#define PWM_Pin 5     // PWM Pin for Motor 1 (Arduino supports PWM on specific pins)
+#define Motor1_Pin 2   
+#define PWM_Pin 5     
 
-volatile int pulseCount = 0;   // Pulse count for motor speed
-float MotorRpm = 0;            // Motor speed in RPM
-const int PPR = 210;           // Pulses per revolution (encoder specification)
+volatile int pulseCount = 0;   
+float MotorRpm = 0;            
+const int PPR = 210;           
 
-int pwmSignal = 0;             // PWM signal value (0-255)
-unsigned long lastTime = 0;    // Last time for RPM calculation
-unsigned long calcInterval = 100; // Interval for RPM calculation (milliseconds)
+int pwmSignal = 0;            
+unsigned long lastTime = 0;   
+unsigned long calcInterval = 100; 
 
 void setup() {
   Serial.begin(115200);
 
-  // Motor Encoder Pin setup
+
   pinMode(Motor1_Pin, INPUT_PULLUP);
   attachInterrupt(digitalPinToInterrupt(Motor1_Pin), updatePulse, RISING);
 
-  // PWM Pin setup
+ 
   pinMode(PWM_Pin, OUTPUT);
   pinMode(6,OUTPUT);
   pinMode(7,OUTPUT);
   digitalWrite(6,HIGH);
   digitalWrite(7,LOW);
 
-  // Initialize PWM signal (set to 0)
+  
   analogWrite(PWM_Pin, pwmSignal);
 }
 
 void loop() {
-  // Calculate RPM
+  
   unsigned long currentTime = millis();
   if (currentTime - lastTime >= calcInterval) {
-    MotorRpm = (pulseCount * 600.0) / PPR; // RPM = pulses per minute / pulses per revolution
-    pulseCount = 0;                       // Reset pulse count
+    MotorRpm = (pulseCount * 600.0) / PPR; 
+    pulseCount = 0;                      
     lastTime = currentTime;
 
-    // Print data for plotting
-    Serial.print(pwmSignal); // X-axis: PWM
+   
+    Serial.print(pwmSignal); 
     Serial.print(",");
-    Serial.println(MotorRpm); // Y-axis: RPM
+    Serial.println(MotorRpm); 
   }
 
-  // Update PWM signal dynamically (example: increasing and decreasing)
+  
   pwmSignal += 1.5; 
-  if (pwmSignal > 255) pwmSignal = 0; // Reset PWM when it exceeds 255
+  if (pwmSignal > 255) pwmSignal = 0; 
   analogWrite(PWM_Pin, pwmSignal);
 
-  delay(50); // Small delay for smoother transitions
+  delay(50); 
 }
 
 void updatePulse() {
-  pulseCount++; // Increment pulse count on each encoder tick
+  pulseCount++; 
 }
