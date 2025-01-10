@@ -3,9 +3,9 @@ unsigned long lastTime = 0;
 const int ppr = 210;              
 const int encoderPin = 2;        
 
-//change from arduino
 
-//change from vscode
+
+
 
 void countPulses() {
   pulseCount++; 
