@@ -1,8 +1,8 @@
-
 volatile long pulseCount = 0;  
 unsigned long lastTime = 0;     
 const int ppr = 210;              
 const int encoderPin = 2;        
+
 
 void countPulses() {
   pulseCount++; 
