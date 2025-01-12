@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 
 # Set up the serial connection
-serial_port = "/dev/ttyUSB1"  # Replace with your Arduino's port
+serial_port = "/dev/ttyUSB0"  # Replace with your Arduino's port
 baud_rate = 115200
 arduino = serial.Serial(serial_port, baud_rate, timeout=1)
 

@@ -30,36 +30,32 @@ void IRAM_ATTR updatePulseMotor3();
 float normalize(float value, float minInput, float maxInput) {
     return (value - minInput) / (maxInput - minInput) * 2 - 1;
 }
-float MotorRpm[3]; 
+float MotorRpm[3]={0,0,0}; 
+float Motow_Vel[3]={0,0,0};
 volatile int pulseCount[3] = {0, 0, 0}; 
 const int PPR = 210; 
-
-
-
 unsigned long lastCalculationTime[3] = {0, 0, 0}; 
-
 struct JoyStick {
-  float xPos = 0.0;
-  float yPos = 0.0;
+  float Angle = 0.0;
+  float Radius = 0.0;
   float w=0.0;
   String D_Pressed = "";
   String Key_Pressed="";
   String Special_Pressed="";
 };
 JoyStick Joy;
-
 SemaphoreHandle_t xSemaphore;
 
 void setup() {
   Serial.begin(115200);
   Dabble.begin("MyEsp32");
   xSemaphore = xSemaphoreCreateMutex();
-  pinMode(Motor1_Pin, INPUT_PULLUP);
-  attachInterrupt(digitalPinToInterrupt(Motor1_ITR_Pin1), updatePulseMotor1, RISING);
-  pinMode(Motor2_Pin, INPUT_PULLUP);
-  attachInterrupt(digitalPinToInterrupt(Motor2_ITR_Pin1), updatePulseMotor2, RISING);
-  pinMode(Motor3_Pin, INPUT_PULLUP);
-  attachInterrupt(digitalPinToInterrupt(Motor3_ITR_Pin1), updatePulseMotor3, RISING);
+  pinMode(Motor1_Enc_CHA, INPUT_PULLUP);
+  attachInterrupt(digitalPinToInterrupt(Motor1_Enc_CHA), updatePulseMotor1, RISING);
+  pinMode(Motor2_Enc_CHA, INPUT_PULLUP);
+  attachInterrupt(digitalPinToInterrupt(Motor2_Enc_CHA), updatePulseMotor2, RISING);
+  pinMode(Motor3_Enc_CHA, INPUT_PULLUP);
+  attachInterrupt(digitalPinToInterrupt(Motor3_Enc_CHA), updatePulseMotor3, RISING);
   xTaskCreatePinnedToCore(handleGamepadInput, "Gamepad Input", 2048, NULL, 1, NULL, 0);
   xTaskCreatePinnedToCore(displayGamepadData, "Display Data", 2048, NULL, 1, NULL, 1);
   xTaskCreatePinnedToCore(CalculateRpm, "Calculate RPM", 2048, NULL, 1, NULL, 1);
@@ -112,10 +108,8 @@ void handleGamepadInput(void *parameter) {
       if (GamePad.isStartPressed()) Joy.Special_Pressed += "Start ";
       if (GamePad.isSelectPressed()) Joy.Special_Pressed += "Select ";
 
-      Joy.xPos = GamePad.getXaxisData();
-      Joy.yPos = GamePad.getYaxisData();
-      Joy.xPos=normalize(Joy.xPos, -7.0, 6.0);
-      Joy.yPos=normalize(Joy.yPos, -6.0, 7.0);
+      Joy.Angle = GamePad.getAngle();
+      Joy.Radius = GamePad.getRadius();
       xSemaphoreGive(xSemaphore);
     }
 
@@ -126,12 +120,16 @@ void handleGamepadInput(void *parameter) {
 void displayGamepadData(void *parameter) {
   while (true) {
 
-    Serial.print(Joy.xPos, 2);
+    Serial.print(Joy.Angle, 2);
     Serial.print(",");
-    Serial.println(Joy.yPos, 2);
+    Serial.println(Joy.Radius, 2);
 
 
 
     vTaskDelay(10 / portTICK_PERIOD_MS);
   }
 }
+void UpdateMotor(void *parameter){
+  
+}
+
