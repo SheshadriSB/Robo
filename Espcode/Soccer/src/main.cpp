@@ -120,6 +120,6 @@ void displayGamepadDataTask(void *parameter) {
             Serial.println(RemoteXY.joystick_01_x);
             xSemaphoreGive(xSemaphore);
         }
-        vTaskDelay(pdMS_TO_TICKS(500));
+        vTaskDelay(pdMS_TO_TICKS(50));
     }
 }

@@ -26,8 +26,8 @@ void setup() {
 }
 
 void loop() {
-  for (int freq = 100; freq <= 1000; freq += 100) {
-    for (int run = 0; run < 2; run++) { // Repeat 3 times for each frequency
+  for (int freq = 1000; freq <= 10000; freq += 250) {
+    for (int run = 0; run < 1; run++) { // Repeat 3 times for each frequency
       ledcDetach(PWM_PIN);
       ledcAttach(PWM_PIN, freq, 8); // Setup PWM for given frequency
       ledcWrite(PWM_PIN, 0); // Stop the motor initially
