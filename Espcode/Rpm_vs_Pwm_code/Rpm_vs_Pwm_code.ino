@@ -1,54 +1,64 @@
-#define Motor1_Pin 2   
-#define PWM_Pin 5     
+#define PWM_PIN 13
+#define DIR_PIN1 12
+#define DIR_PIN2 14
+#define ENCODER_PIN 32
+#define PULSES_PER_REV 210
 
-volatile int pulseCount = 0;   
-float MotorRpm = 0;            
-const int PPR = 210;           
+volatile int pulseCount = 0;
 
-int pwmSignal = 0;            
-unsigned long lastTime = 0;   
-unsigned long calcInterval = 100; 
+void IRAM_ATTR countPulse() {
+  pulseCount++;
+}
 
 void setup() {
   Serial.begin(115200);
 
+  pinMode(ENCODER_PIN, INPUT_PULLUP);
+  attachInterrupt(digitalPinToInterrupt(ENCODER_PIN), countPulse, RISING);
 
-  pinMode(Motor1_Pin, INPUT_PULLUP);
-  attachInterrupt(digitalPinToInterrupt(Motor1_Pin), updatePulse, RISING);
+  pinMode(DIR_PIN1, OUTPUT);
+  pinMode(DIR_PIN2, OUTPUT);
 
- 
-  pinMode(PWM_Pin, OUTPUT);
-  pinMode(6,OUTPUT);
-  pinMode(7,OUTPUT);
-  digitalWrite(6,HIGH);
-  digitalWrite(7,LOW);
+  digitalWrite(DIR_PIN1, HIGH);
+  digitalWrite(DIR_PIN2, LOW);
 
-  
-  analogWrite(PWM_Pin, pwmSignal);
+  Serial.println("Starting data collection");
 }
 
 void loop() {
-  
-  unsigned long currentTime = millis();
-  if (currentTime - lastTime >= calcInterval) {
-    MotorRpm = (pulseCount * 600.0) / PPR; 
-    pulseCount = 0;                      
-    lastTime = currentTime;
+  for (int freq = 100; freq <= 1000; freq += 100) {
+    for (int run = 0; run < 2; run++) { // Repeat 3 times for each frequency
+      ledcDetach(PWM_PIN);
+      ledcAttach(PWM_PIN, freq, 8); // Setup PWM for given frequency
+      ledcWrite(PWM_PIN, 0); // Stop the motor initially
+      delay(2000); // Pause before measurement
 
-   
-    Serial.print(pwmSignal); 
-    Serial.print(",");
-    Serial.println(MotorRpm); 
+      for (int dutyValue = 0; dutyValue <= 255; dutyValue += 2) {
+        ledcWrite(PWM_PIN, dutyValue);
+
+        unsigned long startTime = millis();
+        pulseCount = 0;
+
+        while (millis() - startTime < 100) {
+          // Wait 100 ms for stable RPM measurement
+        }
+
+        noInterrupts();
+        float motorRPM = (pulseCount * 600.0) / PULSES_PER_REV; // RPM calculation
+        interrupts();
+
+        Serial.print(freq);
+        Serial.print(",");
+        Serial.print(dutyValue);
+        Serial.print(",");
+        Serial.print(run + 1); // Run number
+        Serial.print(",");
+        Serial.println(motorRPM);
+      }
+    }
   }
 
-  
-  pwmSignal += 1.5; 
-  if (pwmSignal > 255) pwmSignal = 0; 
-  analogWrite(PWM_Pin, pwmSignal);
-
-  delay(50); 
-}
-
-void updatePulse() {
-  pulseCount++; 
+  Serial.println("Data collection finished");
+  delay(5000); // Delay before restarting
+  ESP.restart(); // Restart ESP32
 }
