@@ -1,69 +1,75 @@
 import serial
 import time
+import pandas as pd
 import matplotlib.pyplot as plt
-import seaborn as sns
+import os
 
-# Set up the serial connection
-serial_port = "/dev/ttyUSB0"  # Replace with your Arduino's port
-baud_rate = 115200
-arduino = serial.Serial(serial_port, baud_rate, timeout=1)
+# Configure the serial port
+port = "/dev/ttyUSB0"  # Change to the correct port
+baudrate = 115200
+ser = serial.Serial(port, baudrate, timeout=1)
 
-# Initialize data storage
-pwm_data = []
-rpm_data = []
-peak_rpm = 0
+# Reset the ESP32 by toggling DTR/RTS
+ser.setDTR(False)
+ser.setRTS(False)
+time.sleep(0.1)
+ser.setDTR(True)
+ser.setRTS(True)
+time.sleep(2)  # Wait for ESP32 to reboot
 
-def update_peak_rpm(current_rpm, peak_rpm):
-    """Update the peak RPM if the current RPM is higher."""
-    return max(current_rpm, peak_rpm)
+data = []
 
-def read_serial_data():
-    """Read and parse data from the Arduino."""
-    try:
-        line = arduino.readline().decode('utf-8').strip()
-        if line:
-            # Assuming Arduino sends data as "PWM,RPM"
-            pwm, rpm = map(float, line.split(","))
-            return pwm, rpm
-    except Exception as e:
-        print(f"Error reading serial data: {e}")
-    return None, None
-
-def plot_graph(pwm_data, rpm_data, peak_rpm):
-    """Plot RPM vs PWM with peak RPM annotation."""
-    sns.set_theme(style="darkgrid")
-    plt.figure(figsize=(10, 6))
-    plt.plot(pwm_data, rpm_data, label="RPM vs PWM", color='blue', linewidth=2)
-    plt.axhline(peak_rpm, color='red', linestyle='--', label=f"Peak RPM: {peak_rpm:.2f}")
-    plt.xlabel("PWM Signal (%)")
-    plt.ylabel("RPM")
-    plt.title("Motor Speed (RPM) vs PWM Signal")
-    plt.legend()
-    plt.grid(True)
-    plt.show()
-
+print("Collecting data...")
 try:
-    print("Reading data from Arduino...")
-    start_time = time.time()
-    duration = 20  # Run for 60 seconds
+    while True:
+        line = ser.readline().decode().strip()
+        if not line or "ets " in line or "rst: " in line:
+            continue  # Skip boot messages
 
-    while time.time() - start_time < duration:
-        pwm, rpm = read_serial_data()
-        if pwm is not None and rpm is not None:
-            print(f"PWM: {pwm}, RPM: {rpm}")
-            pwm_data.append(pwm)
-            rpm_data.append(rpm)
-            peak_rpm = update_peak_rpm(rpm, peak_rpm)
-
-    print("Data collection complete.")
-    print(f"Peak RPM: {peak_rpm}")
-
-    # Plot the graph
-    plot_graph(pwm_data, rpm_data, peak_rpm)
+        if "Starting data collection" in line:
+            print(line)
+        elif "Data collection finished" in line:
+            print(line)
+            break
+        else:
+            try:
+                freq, duty, run, rpm = map(float, line.split(","))
+                data.append((freq, duty, run, rpm))
+                print(f"Freq: {freq} Hz, Duty: {duty}%, Run: {run}, RPM: {rpm}")
+            except ValueError:
+                print(f"Unexpected line: {line}")  # Debugging any other unexpected lines
 
 except KeyboardInterrupt:
-    print("\nData collection interrupted by user.")
+    print("Data collection interrupted.")
 
-finally:
-    arduino.close()
-    print("Serial connection closed.")
+ser.close()
+
+# Convert the data to a DataFrame
+df = pd.DataFrame(data, columns=["Frequency", "DutyCycle", "Run", "RPM"])
+
+# Create an output directory
+output_dir = "plots"
+os.makedirs(output_dir, exist_ok=True)
+
+# Plot graphs for each frequency and run
+unique_frequencies = sorted(df["Frequency"].unique())
+unique_runs = sorted(df["Run"].unique())
+
+for freq in unique_frequencies:
+    for run in unique_runs:
+        subset = df[(df["Frequency"] == freq) & (df["Run"] == run)]
+        plt.figure(figsize=(8, 6))
+        plt.plot(subset["DutyCycle"], subset["RPM"], marker="o", label=f"Run {int(run)}")
+        plt.title(f"Frequency: {int(freq)} Hz, Run: {int(run)}")
+        plt.xlabel("Duty Cycle (%)")
+        plt.ylabel("RPM")
+        plt.grid()
+        plt.legend()
+
+        # Save the plot
+        filename = os.path.join(output_dir, f"Freq_{int(freq)}Hz_Run_{int(run)}.png")
+        plt.savefig(filename, dpi=300)
+        print(f"Saved plot: {filename}")
+        plt.close()
+
+print("All plots saved successfully!")
