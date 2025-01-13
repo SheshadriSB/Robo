@@ -1,0 +1,68 @@
+import serial
+import matplotlib.pyplot as plt
+from matplotlib.animation import FuncAnimation
+
+# Configuration
+SERIAL_PORT = "/dev/ttyUSB0"  # Replace with your serial port (e.g., COM3, /dev/ttyUSB0)
+BAUD_RATE = 115200     # Match your device's baud rate
+MAX_DATA_POINTS = 100  # Maximum number of points to display
+
+# Initialize serial connection
+ser = serial.Serial(SERIAL_PORT, BAUD_RATE, timeout=1)
+
+# Initialize data storage
+x_data = []
+y1_data = []
+y2_data = []
+
+# Figure setup
+fig, ax = plt.subplots()
+line1, = ax.plot([], [], 'r-', label="Value 1")
+line2, = ax.plot([], [], 'b-', label="Value 2")
+ax.set_xlim(0, MAX_DATA_POINTS)
+ax.set_ylim(0, 50)  # Adjust according to your data range
+ax.set_title("Live Plot from Serial Monitor")
+ax.set_xlabel("Time (samples)")
+ax.set_ylabel("Values")
+ax.legend()
+
+# Update function for animation
+def update(frame):
+    global x_data, y1_data, y2_data
+
+    # Read a line from serial
+    line_data = ser.readline().decode('utf-8').strip()
+    if line_data:
+        try:
+            # Parse the two values
+            value1, value2 = map(float, line_data.split(','))  # Split and convert to floats
+            x_data.append(len(x_data))  # Increment time step
+            y1_data.append(value1)
+            y2_data.append(value2)
+
+            # Maintain only the last MAX_DATA_POINTS
+            x_data = x_data[-MAX_DATA_POINTS:]
+            y1_data = y1_data[-MAX_DATA_POINTS:]
+            y2_data = y2_data[-MAX_DATA_POINTS:]
+
+            # Update plot data
+            line1.set_data(x_data, y1_data)
+            line2.set_data(x_data, y2_data)
+
+            # Adjust axes dynamically
+            ax.set_xlim(0, len(x_data))
+            ax.set_ylim(
+                min(min(y1_data), min(y2_data)) - 5, 
+                max(max(y1_data), max(y2_data)) + 5
+            )
+        except ValueError:
+            print(f"Invalid data: {line_data}")
+
+    return line1, line2
+
+# Run the animation
+ani = FuncAnimation(fig, update, interval=100)  # Update every 100 ms
+plt.show()
+
+# Close the serial port when done
+ser.close()

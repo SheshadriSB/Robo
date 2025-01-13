@@ -26,7 +26,7 @@ void setup() {
 }
 
 void loop() {
-  for (int freq = 1000; freq <= 10000; freq += 250) {
+  for (int freq = ; freq <= 10000; freq += 250) {
     for (int run = 0; run < 1; run++) { // Repeat 3 times for each frequency
       ledcDetach(PWM_PIN);
       ledcAttach(PWM_PIN, freq, 8); // Setup PWM for given frequency
@@ -50,7 +50,7 @@ void loop() {
         Serial.print(freq);
         Serial.print(",");
         Serial.print(dutyValue);
-        Serial.print(",");
+        Serial.prinoInterrupts();t(",");
         Serial.print(run + 1); // Run number
         Serial.print(",");
         Serial.println(motorRPM);
