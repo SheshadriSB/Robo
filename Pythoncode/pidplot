@@ -1,68 +1,50 @@
 import serial
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
+from collections import deque
 
-# Configuration
-SERIAL_PORT = "/dev/ttyUSB0"  # Replace with your serial port (e.g., COM3, /dev/ttyUSB0)
-BAUD_RATE = 115200     # Match your device's baud rate
-MAX_DATA_POINTS = 100  # Maximum number of points to display
-
-# Initialize serial connection
+# Serial port configuration
+SERIAL_PORT = '/dev/ttyUSB0'  # Your serial port
+BAUD_RATE = 115200
 ser = serial.Serial(SERIAL_PORT, BAUD_RATE, timeout=1)
 
-# Initialize data storage
-x_data = []
-y1_data = []
-y2_data = []
+# Real-time data buffers
+BUFFER_SIZE = 100  # Number of data points to keep in the graph
+time_data = deque(maxlen=BUFFER_SIZE)
+rpm_data = deque(maxlen=BUFFER_SIZE)
+output_data = deque(maxlen=BUFFER_SIZE)
 
-# Figure setup
+# Initialize the plot
 fig, ax = plt.subplots()
-line1, = ax.plot([], [], 'r-', label="Value 1")
-line2, = ax.plot([], [], 'b-', label="Value 2")
-ax.set_xlim(0, MAX_DATA_POINTS)
-ax.set_ylim(0, 50)  # Adjust according to your data range
-ax.set_title("Live Plot from Serial Monitor")
-ax.set_xlabel("Time (samples)")
+line_rpm, = ax.plot([], [], label="RPM", color="blue")
+line_output, = ax.plot([], [], label="Output", color="red")
+ax.set_xlim(0, BUFFER_SIZE)
+ax.set_ylim(0, 300)  # Adjust based on your Setpoint
+ax.set_xlabel("Time (units)")
 ax.set_ylabel("Values")
 ax.legend()
+plt.title("Real-Time RPM and Output Plot")
 
-# Update function for animation
+# Update function for the animation
 def update(frame):
-    global x_data, y1_data, y2_data
-
-    # Read a line from serial
-    line_data = ser.readline().decode('utf-8').strip()
-    if line_data:
+    global ser
+    if ser.in_waiting > 0:
         try:
-            # Parse the two values
-            value1, value2 = map(float, line_data.split(','))  # Split and convert to floats
-            x_data.append(len(x_data))  # Increment time step
-            y1_data.append(value1)
-            y2_data.append(value2)
-
-            # Maintain only the last MAX_DATA_POINTS
-            x_data = x_data[-MAX_DATA_POINTS:]
-            y1_data = y1_data[-MAX_DATA_POINTS:]
-            y2_data = y2_data[-MAX_DATA_POINTS:]
-
+            line = ser.readline().decode('utf-8').strip()  # Read and decode serial data
+            rpm, output = map(float, line.split(","))  # Assuming "RPM,Output" format
+            time_data.append(len(time_data))  # Incremental time data
+            rpm_data.append(rpm)
+            output_data.append(output)
+            
             # Update plot data
-            line1.set_data(x_data, y1_data)
-            line2.set_data(x_data, y2_data)
-
-            # Adjust axes dynamically
-            ax.set_xlim(0, len(x_data))
-            ax.set_ylim(
-                min(min(y1_data), min(y2_data)) - 5, 
-                max(max(y1_data), max(y2_data)) + 5
-            )
+            line_rpm.set_data(range(len(time_data)), rpm_data)
+            line_output.set_data(range(len(time_data)), output_data)
+            ax.set_xlim(0, len(time_data))  # Adjust x-axis dynamically
         except ValueError:
-            print(f"Invalid data: {line_data}")
+            pass  # Handle any bad data gracefully
 
-    return line1, line2
+    return line_rpm, line_output
 
-# Run the animation
-ani = FuncAnimation(fig, update, interval=100)  # Update every 100 ms
+# Start animation
+ani = FuncAnimation(fig, update, interval=100)
 plt.show()
-
-# Close the serial port when done
-ser.close()

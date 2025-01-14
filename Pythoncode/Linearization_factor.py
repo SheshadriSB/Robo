@@ -1,24 +1,45 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-# Provided data
-pwm = np.array([126, 130, 134, 138, 142, 146, 150, 154, 158, 162, 166, 170, 174, 178, 182, 186, 190, 194, 198, 202, 206, 210, 214])
-rpm = np.array([480, 485.71, 488.57, 494.29, 497.14, 500, 502.86, 505.71, 508.57, 511.43, 511.43, 514.29, 517.14, 517.14, 520, 520, 525.71, 522.86, 525.71, 528.57, 528.57, 531.43, 534.29])
+# Extract the PWM and RPM data
+pwm = data.iloc[:, 0]  # First column: PWM
+rpm = data.iloc[:, 1]  # Second column: RPM
 
-# Exponential adjustment
-def adjust_pwm(pwm, k=1.0, b=3.2):
-    return k * (pwm ** b)
+# Define the dead zone (PWM values below this are ineffective)
+dead_zone_pwm = 50
 
-# Adjust parameters as needed
-adjusted_pwm = adjust_pwm(pwm, k=0, b=0.355)
+# Remove the dead zone
+valid_indices = pwm >= dead_zone_pwm
+pwm_valid = pwm[valid_indices]
+rpm_valid = rpm[valid_indices]
 
-# Plot original vs adjusted
-plt.figure(figsize=(10, 6))
-plt.plot(pwm, rpm, label="Original RPM", marker="o")
-plt.plot(adjusted_pwm, rpm, label="Adjusted PWM", marker="x")
-plt.xlabel("PWM")
-plt.ylabel("RPM")
+# Fit a logarithmic function to the RPM data after the dead zone
+log_rpm = np.log(rpm_valid)
+coefficients = np.polyfit(log_rpm, pwm_valid, 1)  # Linear fit in log space
+a, b = coefficients
+
+# Define a function to transform RPM to adjusted PWM for linear mapping
+def adjust_pwm(rpm_values):
+    log_rpm = np.log(rpm_values)
+    adjusted_pwm = a * log_rpm + b
+    return adjusted_pwm
+
+# Apply the transformation to all RPM values
+adjusted_pwm = adjust_pwm(rpm_valid)
+
+# Save the adjusted PWM and original RPM to a new CSV file
+adjusted_data = pd.DataFrame({'Adjusted_PWM': adjusted_pwm, 'RPM': rpm_valid})
+adjusted_file_path = '/mnt/data/adjusted_pwm_rpm.csv'
+adjusted_data.to_csv(adjusted_file_path, index=False)
+
+# Plot the adjusted PWM vs. RPM to verify linearity
+plt.figure(figsize=(8, 6))
+plt.plot(rpm_valid, adjusted_pwm, marker='o', label='Adjusted PWM')
+plt.title('Adjusted PWM vs. RPM')
+plt.xlabel('RPM')
+plt.ylabel('Adjusted PWM')
+plt.grid()
 plt.legend()
-plt.grid(True)
-plt.title("PWM Adjustment for Linearized RPM")
 plt.show()
+
+adjusted_file_path

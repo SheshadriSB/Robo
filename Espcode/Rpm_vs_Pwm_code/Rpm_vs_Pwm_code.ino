@@ -26,14 +26,14 @@ void setup() {
 }
 
 void loop() {
-  for (int freq = ; freq <= 10000; freq += 250) {
-    for (int run = 0; run < 1; run++) { // Repeat 3 times for each frequency
+  for (int freq =1000 ; freq <= 1000; freq += 250) {
+    for (int run = 0; run < 10; run++) { // Repeat 3 times for each frequency
       ledcDetach(PWM_PIN);
       ledcAttach(PWM_PIN, freq, 8); // Setup PWM for given frequency
       ledcWrite(PWM_PIN, 0); // Stop the motor initially
       delay(2000); // Pause before measurement
 
-      for (int dutyValue = 0; dutyValue <= 255; dutyValue += 2) {
+      for (int dutyValue = 0; dutyValue <= 255; dutyValue += 1.5) {
         ledcWrite(PWM_PIN, dutyValue);
 
         unsigned long startTime = millis();
@@ -50,7 +50,7 @@ void loop() {
         Serial.print(freq);
         Serial.print(",");
         Serial.print(dutyValue);
-        Serial.prinoInterrupts();t(",");
+        Serial.print(",");
         Serial.print(run + 1); // Run number
         Serial.print(",");
         Serial.println(motorRPM);
