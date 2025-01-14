@@ -35,13 +35,15 @@
 
 // RemoteXY GUI configuration  
 #pragma pack(push, 1)  
-uint8_t RemoteXY_CONF[] =   // 117 bytes
-  { 255,8,0,0,0,110,0,19,0,0,0,0,180,2,108,200,200,80,1,1,
-  7,0,5,8,5,65,65,7,23,55,55,32,2,26,7,1,8,146,18,18,
+uint8_t RemoteXY_CONF[] =   // 143 bytes
+  { 255,8,0,8,0,136,0,19,0,0,0,0,180,2,108,200,200,80,1,1,
+  9,0,5,8,5,65,65,7,23,55,55,32,2,26,7,1,8,146,18,18,
   143,56,16,16,0,2,31,83,0,1,56,147,18,18,125,39,16,16,0,2,
   31,65,0,1,32,125,18,18,160,39,16,16,0,2,31,68,0,1,32,168,
   18,18,143,22,16,16,0,2,31,87,0,1,80,162,24,24,23,245,21,21,
-  8,2,31,0,1,82,6,24,24,166,245,22,22,8,2,31,0 };
+  8,2,31,0,1,82,6,24,24,166,245,22,22,8,2,31,0,67,42,38,
+  22,25,66,5,24,5,78,2,26,3,67,57,13,22,25,97,5,24,5,78,
+  2,26,3 };
   
 // this structure defines all the variables and events of your control interface 
 struct {
@@ -55,6 +57,10 @@ struct {
   uint8_t button_04; // =1 if button pressed, else =0
   uint8_t button_05; // =1 if button pressed, else =0
   uint8_t button_06; // =1 if button pressed, else =0
+
+    // output variables
+  float value_01;
+  float value_02;
 
     // other variable
   uint8_t connect_flag;  // =1 if wire connected, else =0

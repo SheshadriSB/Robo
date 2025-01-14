@@ -1,5 +1,6 @@
 #include "Remotexy.h"
 #include <PID_v1.h>
+
 struct{
     float Velx;
     float Vely;
@@ -45,8 +46,8 @@ void setup() {
     RemoteXY_Init(); 
     xSemaphore=xSemaphoreCreateMutex();
     if (xSemaphore != NULL) {
-        //xTaskCreatePinnedToCore(InvKinematics, "Task 1", 1000, NULL, 1, NULL,0);
-        xTaskCreate(Obtain_Normalize_JoyData, "Task 2", 2048, NULL, 1, NULL);
+        xTaskCreatePinnedToCore(InvKinematics, "Task 1", 1000, NULL, 1, NULL,0);
+        xTaskCreatePinnedToCore(Obtain_Normalize_JoyData, "Task 2", 4096, NULL, 1, NULL,1);
     } 
     else {
         Serial.println("Failed to create mutex.");
@@ -104,12 +105,29 @@ void Obtain_Normalize_JoyData(void *parameter) {
     while (true) {
         RemoteXY_Handler();
         if (xSemaphoreTake(xSemaphore, portMAX_DELAY)) {
-            Joy.Vely = (float)RemoteXY.joystick_01_x / 10;
+            Joy.Velx = (float)RemoteXY.joystick_01_x / 100;
             Joy.Vely = (float)RemoteXY.joystick_01_y / 100;
+            if(RemoteXY.button_05==1)
+            Joy.w=1;
+            else if(RemoteXY.button_06==1)
+            Joy.w=-1;
+            else
+            Joy.w=0;
             xSemaphoreGive(xSemaphore);
+            RemoteXY.value_01=Joy.Velx;
+            RemoteXY.value_02=Joy.Vely;
+            //Serial.print( RemoteXY.value_01);
+           // Serial.print( RemoteXY.value_02);
+           Serial.print(Vel[0],3);
+           Serial.print(",");
+           Serial.print(Vel[1],3);
+           Serial.print(",");
+           Serial.println(Vel[2],3);
+
+
 
         }
-        vTaskDelay(pdMS_TO_TICKS(100));
+        vTaskDelay(pdMS_TO_TICKS(10));
     }
 }
 
