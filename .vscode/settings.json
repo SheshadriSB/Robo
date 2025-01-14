@@ -1,3 +1,6 @@
 {
-    "cmake.sourceDirectory": "/home/erectus/Documents/Soccer Code/Robo/Ray_Sim"
+    "cmake.sourceDirectory": "/home/erectus/Documents/Soccer Code/Robo/Ray_Sim",
+    "files.associations": {
+        "cmath": "cpp"
+    }
 }

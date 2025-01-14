@@ -1,3 +1,0 @@
-/home/erectus/Documents/Soccer Code/Robo/build/CMakeFiles/test.dir
-/home/erectus/Documents/Soccer Code/Robo/build/CMakeFiles/edit_cache.dir
-/home/erectus/Documents/Soccer Code/Robo/build/CMakeFiles/rebuild_cache.dir

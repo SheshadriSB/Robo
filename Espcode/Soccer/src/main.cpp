@@ -1,125 +1,143 @@
-#define REMOTEXY_MODE__ESP32CORE_BLE
-#define REMOTEXY_BLUETOOTH_NAME "RemoteXY"
-#include <BLEDevice.h>
-#include <RemoteXY.h>
+#include "Remotexy.h"
+#include <PID_v1.h>
+struct{
+    float Velx;
+    float Vely;
+    int w;
+    int Servo;
+}Joy;
 
-#pragma pack(push, 1)
-uint8_t RemoteXY_CONF[] = {
-    255, 10, 0, 0, 0, 96, 0, 19, 0, 0, 0, 0, 31, 1, 106, 200, 2, 1, 0, 8,
-    0, 5, 3, 6, 65, 65, 32, 2, 26, 7, 1, 8, 146, 18, 18, 0, 2, 31, 0, 1,
-    55, 147, 18, 18, 0, 2, 31, 0, 1, 31, 125, 18, 18, 0, 2, 31, 0, 1, 31, 168,
-    18, 18, 0, 2, 31, 0, 1, 78, 162, 24, 24, 8, 2, 31, 0, 1, 80, 6, 24, 24,
-    8, 2, 31, 0, 3, 85, 73, 16, 44, 3, 2, 26, 1, 0, 1, 43, 83, 24, 24, 0,
-    2, 31, 0
-};
-#pragma pack(pop)
 
-struct {
-    int8_t joystick_01_x; // from -100 to 100
-    int8_t joystick_01_y; // from -100 to 100
-    uint8_t button_01;    // =1 if button pressed, else =0
-    uint8_t button_02;    // =1 if button pressed, else =0
-    uint8_t button_03;    // =1 if button pressed, else =0
-    uint8_t button_04;    // =1 if button pressed, else =0
-    uint8_t button_05;    // =1 if button pressed, else =0
-    uint8_t button_06;    // =1 if button pressed, else =0
-    uint8_t selectorSwitch_01; // from 0 to 3
-    uint8_t button_07;    // =1 if button pressed, else =0
-    uint8_t connect_flag; // =1 if wire connected, else =0
-} RemoteXY;
-
+//Pin Number Init
 #define Motor1_Enc_CHA 32
 #define Motor1_Enc_CHB 33
 #define Motor2_Enc_CHA 34
 #define Motor2_Enc_CHB 35
 #define Motor3_Enc_CHA 36
-#define Motor4_Enc_CHB 39
-
-#define Motor1_In1 13
-#define Motor1_In2 14
-#define Motor1_En 15
-
-#define Motor2_In1 16
-#define Motor2_In2 17
-#define Motor2_En 18
-
-#define Motor3_In1 19
-#define Motor3_In2 21
-#define Motor3_En 22
+#define Motor3_Enc_CHB 39
+//Pin Number End
+//Float Definition Starts
+#define SQRT3_2 0.86602540378
+#define HALF 0.5
+//Float Definition Ends
 
 SemaphoreHandle_t xSemaphore;
 
-volatile int pulseCount[3] = {0, 0, 0};
+//Public Variable Delclaration Starts
 float MotorRpm[3] = {0, 0, 0};
-const int PPR = 210; 
-unsigned long lastCalculationTime[3] = {0, 0, 0};
+long prevT[3] = {0, 0, 0};
+int Dir[3]={1,1,1}; 
+float Vel[3]={0.0,0.0,0.0};
+//Public Varaible Declaration Ends
 
-void IRAM_ATTR updatePulseMotor1();
-void IRAM_ATTR updatePulseMotor2();
-void IRAM_ATTR updatePulseMotor3();
-void calculateRPMTask(void *parameter);
-void displayGamepadDataTask(void *parameter);
-void UpdateMotor(void *parameter);
+
+ //Function Declaration
+void IRAM_ATTR updateMotorRPM1();
+void IRAM_ATTR updateMotorRPM2();
+void IRAM_ATTR updateMotorRPM3();
+void Obtain_Normalize_JoyData(void *parameter);
+void InvKinematics(void *parameter);
+ //Function Declaration Ends
+
+
 void setup() {
     Serial.begin(115200);
-
-  RemoteXY_Init (); 
-    xSemaphore = xSemaphoreCreateMutex();
-
+    RemoteXY_Init(); 
+    xSemaphore=xSemaphoreCreateMutex();
+    if (xSemaphore != NULL) {
+        //xTaskCreatePinnedToCore(InvKinematics, "Task 1", 1000, NULL, 1, NULL,0);
+        xTaskCreate(Obtain_Normalize_JoyData, "Task 2", 2048, NULL, 1, NULL);
+    } 
+    else {
+        Serial.println("Failed to create mutex.");
+    }
+//PinMode and interrupt Set Starts
     pinMode(Motor1_Enc_CHA, INPUT_PULLUP);
-    attachInterrupt(digitalPinToInterrupt(Motor1_Enc_CHA), updatePulseMotor1, RISING);
-
+    attachInterrupt(digitalPinToInterrupt(Motor1_Enc_CHA), updateMotorRPM1, RISING);
     pinMode(Motor2_Enc_CHA, INPUT_PULLUP);
-    attachInterrupt(digitalPinToInterrupt(Motor2_Enc_CHA), updatePulseMotor2, RISING);
-
+    attachInterrupt(digitalPinToInterrupt(Motor2_Enc_CHA), updateMotorRPM2, RISING);
     pinMode(Motor3_Enc_CHA, INPUT_PULLUP);
-    attachInterrupt(digitalPinToInterrupt(Motor3_Enc_CHA), updatePulseMotor3, RISING);
+    attachInterrupt(digitalPinToInterrupt(Motor3_Enc_CHA), updateMotorRPM3, RISING);
+//PinMode and interrupt Set Ends
+//PID INIT STARTS
 
-    xTaskCreatePinnedToCore(displayGamepadDataTask, "DisplayGamepadData", 2048, NULL, 1, NULL, 1);
-    xTaskCreatePinnedToCore(calculateRPMTask, "CalculateRPM", 2048, NULL, 1, NULL, 1);
+//PID INIT STOPS
 }
 
 void loop() {
-    RemoteXY_Handler();
+
 }
 
-void IRAM_ATTR updatePulseMotor1() {
-    pulseCount[0]++;
+void updateMotorRPM1() {
+    Dir[0] = (digitalRead(Motor1_Enc_CHB) > 0) ? 1 : -1;
+    long currT = micros(); 
+    MotorRpm[0] = Dir[0] / ((float)(currT - prevT[0])) / 6.0e5; 
+    prevT[0] = currT; 
 }
 
-void IRAM_ATTR updatePulseMotor2() {
-    pulseCount[1]++;
+void updateMotorRPM2() {
+    Dir[1] = (digitalRead(Motor2_Enc_CHB) > 0) ? 1 : -1;
+    long currT = micros(); 
+    MotorRpm[1] = Dir[1] / ((float)(currT - prevT[1])) / 6.0e5; 
+    prevT[1] = currT; 
 }
 
-void IRAM_ATTR updatePulseMotor3() {
-    pulseCount[2]++;
+void updateMotorRPM3() {
+    Dir[2] = (digitalRead(Motor3_Enc_CHB) > 0) ? 1 : -1;
+    long currT = micros(); 
+    MotorRpm[2] = Dir[2] / ((float)(currT - prevT[2])) / 6.0e5; 
+    prevT[2] = currT; 
 }
 
-void calculateRPMTask(void *parameter) {
-    const unsigned long calculationInterval = 100; 
-    while (true) {
-        unsigned long currentTime = millis();
-        for (int i = 0; i < 3; i++) {
-            if (currentTime - lastCalculationTime[i] >= calculationInterval) {
-                if (xSemaphoreTake(xSemaphore, portMAX_DELAY)) {
-                    MotorRpm[i] = (pulseCount[i] * 600.0) / PPR; 
-                    pulseCount[i] = 0; 
-                    lastCalculationTime[i] = currentTime; 
-                    xSemaphoreGive(xSemaphore);
-                }
-            }
+void InvKinematics(void *parameters){    
+    while(true){
+        if(xSemaphoreTake(xSemaphore,portMAX_DELAY)){
+         Vel[0] = -Joy.Velx+Joy.w;
+         Vel[1] = HALF * Joy.Velx - SQRT3_2 * Joy.Vely +Joy.w;
+         Vel[2] = HALF * Joy.Velx + SQRT3_2 * Joy.Vely +Joy.w;   
+        xSemaphoreGive(xSemaphore);
         }
-        vTaskDelay(pdMS_TO_TICKS(calculationInterval)); 
+        vTaskDelay(pdMS_TO_TICKS(100));
     }
-}
-
-void displayGamepadDataTask(void *parameter) {
+ }
+void Obtain_Normalize_JoyData(void *parameter) {
     while (true) {
+        RemoteXY_Handler();
         if (xSemaphoreTake(xSemaphore, portMAX_DELAY)) {
-            Serial.print("Joystick X: ");
-            Serial.println(RemoteXY.joystick_01_x);
+            Joy.Vely = (float)RemoteXY.joystick_01_x / 10;
+            Joy.Vely = (float)RemoteXY.joystick_01_y / 100;
             xSemaphoreGive(xSemaphore);
+
         }
-        vTaskDelay(pdMS_TO_TICKS(50));
+        vTaskDelay(pdMS_TO_TICKS(100));
     }
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
