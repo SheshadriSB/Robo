@@ -4,7 +4,7 @@
 struct{
     float Velx;
     float Vely;
-    int w;
+    float w;
     int Servo;
 }Joy;
 
@@ -28,7 +28,12 @@ SemaphoreHandle_t xSemaphore;
 float MotorRpm[3] = {0, 0, 0};
 long prevT[3] = {0, 0, 0};
 int Dir[3]={1,1,1}; 
-float Vel[3]={0.0,0.0,0.0};
+float Motor_Vel[3]={0.0,0.0,0.0};
+uint8_t MotorPWM[3]={0,0,0};
+float Command_Rpm[3]={0.0,0.0,0.0};
+
+     
+
 //Public Varaible Declaration Ends
 
 
@@ -38,11 +43,15 @@ void IRAM_ATTR updateMotorRPM2();
 void IRAM_ATTR updateMotorRPM3();
 void Obtain_Normalize_JoyData(void *parameter);
 void InvKinematics(void *parameter);
+float mapFloat(float x, float in_min, float in_max, float out_min, float out_max) {
+    return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
+}
+
  //Function Declaration Ends
 
 
 void setup() {
-    Serial.begin(115200);
+    Serial.begin(9600);
     RemoteXY_Init(); 
     xSemaphore=xSemaphoreCreateMutex();
     if (xSemaphore != NULL) {
@@ -93,9 +102,12 @@ void updateMotorRPM3() {
 void InvKinematics(void *parameters){    
     while(true){
         if(xSemaphoreTake(xSemaphore,portMAX_DELAY)){
-         Vel[0] = -Joy.Velx+Joy.w;
-         Vel[1] = HALF * Joy.Velx - SQRT3_2 * Joy.Vely +Joy.w;
-         Vel[2] = HALF * Joy.Velx + SQRT3_2 * Joy.Vely +Joy.w;   
+         Motor_Vel[0] = -Joy.Velx+(float)Joy.w;
+         Motor_Vel[1] = HALF * Joy.Velx - SQRT3_2 * Joy.Vely +(float)Joy.w;
+         Motor_Vel[2] = HALF * Joy.Velx + SQRT3_2 * Joy.Vely +(float)Joy.w; 
+         Command_Rpm[0]=mapFloat(Motor_Vel[0],-1,1,-500,500);
+         Command_Rpm[1]=mapFloat(Motor_Vel[1],-1,1,-500,500);
+         Command_Rpm[2]=mapFloat(Motor_Vel[2],-1,1,-500,500);
         xSemaphoreGive(xSemaphore);
         }
         vTaskDelay(pdMS_TO_TICKS(100));
@@ -105,12 +117,12 @@ void Obtain_Normalize_JoyData(void *parameter) {
     while (true) {
         RemoteXY_Handler();
         if (xSemaphoreTake(xSemaphore, portMAX_DELAY)) {
-            Joy.Velx = (float)RemoteXY.joystick_01_x / 100;
-            Joy.Vely = (float)RemoteXY.joystick_01_y / 100;
+            Joy.Velx = (float)RemoteXY.joystick_01_x / 200;
+            Joy.Vely = (float)RemoteXY.joystick_01_y / 200;
             if(RemoteXY.button_05==1)
-            Joy.w=1;
+            Joy.w=0.3;
             else if(RemoteXY.button_06==1)
-            Joy.w=-1;
+            Joy.w=-0.3;
             else
             Joy.w=0;
             xSemaphoreGive(xSemaphore);
@@ -118,11 +130,11 @@ void Obtain_Normalize_JoyData(void *parameter) {
             RemoteXY.value_02=Joy.Vely;
             //Serial.print( RemoteXY.value_01);
            // Serial.print( RemoteXY.value_02);
-           Serial.print(Vel[0],3);
+           Serial.print(Command_Rpm[0],3);
            Serial.print(",");
-           Serial.print(Vel[1],3);
+           Serial.print(Command_Rpm[1],3);
            Serial.print(",");
-           Serial.println(Vel[2],3);
+           Serial.println(Command_Rpm[2],3);
 
 
 
@@ -130,6 +142,7 @@ void Obtain_Normalize_JoyData(void *parameter) {
         vTaskDelay(pdMS_TO_TICKS(10));
     }
 }
+
 
 
 
