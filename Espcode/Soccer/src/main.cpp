@@ -102,27 +102,25 @@ void updateMotorRPM3() {
 void InvKinematics(void *parameters){    
     while(true){
         if(xSemaphoreTake(xSemaphore,portMAX_DELAY)){
-         Motor_Vel[0] = -Joy.Velx+(float)Joy.w;
-         Motor_Vel[1] = HALF * Joy.Velx - SQRT3_2 * Joy.Vely +(float)Joy.w;
-         Motor_Vel[2] = HALF * Joy.Velx + SQRT3_2 * Joy.Vely +(float)Joy.w; 
-         Command_Rpm[0]=mapFloat(Motor_Vel[0],-1,1,-500,500);
-         Command_Rpm[1]=mapFloat(Motor_Vel[1],-1,1,-500,500);
-         Command_Rpm[2]=mapFloat(Motor_Vel[2],-1,1,-500,500);
+         Motor_Vel[0] = -Joy.Velx+Joy.w;
+         Motor_Vel[1] = HALF * Joy.Velx - SQRT3_2 * Joy.Vely +Joy.w;
+         Motor_Vel[2] = HALF * Joy.Velx + SQRT3_2 * Joy.Vely +Joy.w; 
         xSemaphoreGive(xSemaphore);
         }
-        vTaskDelay(pdMS_TO_TICKS(100));
+        vTaskDelay(pdMS_TO_TICKS(10));
     }
  }
+
 void Obtain_Normalize_JoyData(void *parameter) {
     while (true) {
         RemoteXY_Handler();
         if (xSemaphoreTake(xSemaphore, portMAX_DELAY)) {
-            Joy.Velx = (float)RemoteXY.joystick_01_x / 200;
-            Joy.Vely = (float)RemoteXY.joystick_01_y / 200;
+            Joy.Velx = RemoteXY.joystick_01_x ;
+            Joy.Vely = RemoteXY.joystick_01_y;
             if(RemoteXY.button_05==1)
-            Joy.w=0.3;
+            Joy.w=30;
             else if(RemoteXY.button_06==1)
-            Joy.w=-0.3;
+            Joy.w=-30;
             else
             Joy.w=0;
             xSemaphoreGive(xSemaphore);

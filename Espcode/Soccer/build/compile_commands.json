@@ -1,0 +1,8 @@
+[
+{
+  "directory": "/home/erectus/Documents/Soccer Code/Robo/Espcode/Soccer/build",
+  "command": "/usr/bin/c++   -g -I/usr/local/include -o CMakeFiles/test.dir/main.cpp.o -c \"/home/erectus/Documents/Soccer Code/Robo/Ray_Sim/main.cpp\"",
+  "file": "/home/erectus/Documents/Soccer Code/Robo/Ray_Sim/main.cpp",
+  "output": "CMakeFiles/test.dir/main.cpp.o"
+}
+]

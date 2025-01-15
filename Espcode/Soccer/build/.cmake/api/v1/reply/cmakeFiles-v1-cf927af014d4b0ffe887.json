@@ -16,12 +16,12 @@
 		},
 		{
 			"isGenerated" : true,
-			"path" : "/home/erectus/Documents/Soccer Code/Robo/build/CMakeFiles/3.28.3/CMakeSystem.cmake"
+			"path" : "/home/erectus/Documents/Soccer Code/Robo/Espcode/Soccer/build/CMakeFiles/3.28.3/CMakeSystem.cmake"
 		},
 		{
 			"isCMake" : true,
 			"isExternal" : true,
-			"path" : "/usr/share/cmake-3.28/Modules/CMakeNinjaFindMake.cmake"
+			"path" : "/usr/share/cmake-3.28/Modules/CMakeUnixFindMake.cmake"
 		},
 		{
 			"isCMake" : true,
@@ -290,7 +290,7 @@
 		},
 		{
 			"isGenerated" : true,
-			"path" : "/home/erectus/Documents/Soccer Code/Robo/build/CMakeFiles/3.28.3/CMakeCCompiler.cmake"
+			"path" : "/home/erectus/Documents/Soccer Code/Robo/Espcode/Soccer/build/CMakeFiles/3.28.3/CMakeCCompiler.cmake"
 		},
 		{
 			"isCMake" : true,
@@ -544,7 +544,7 @@
 		},
 		{
 			"isGenerated" : true,
-			"path" : "/home/erectus/Documents/Soccer Code/Robo/build/CMakeFiles/3.28.3/CMakeCXXCompiler.cmake"
+			"path" : "/home/erectus/Documents/Soccer Code/Robo/Espcode/Soccer/build/CMakeFiles/3.28.3/CMakeCXXCompiler.cmake"
 		},
 		{
 			"isCMake" : true,
@@ -668,7 +668,7 @@
 		},
 		{
 			"isGenerated" : true,
-			"path" : "/home/erectus/Documents/Soccer Code/Robo/build/CMakeFiles/3.28.3/CMakeCCompiler.cmake"
+			"path" : "/home/erectus/Documents/Soccer Code/Robo/Espcode/Soccer/build/CMakeFiles/3.28.3/CMakeCCompiler.cmake"
 		},
 		{
 			"isCMake" : true,
@@ -762,7 +762,7 @@
 		},
 		{
 			"isGenerated" : true,
-			"path" : "/home/erectus/Documents/Soccer Code/Robo/build/CMakeFiles/3.28.3/CMakeCXXCompiler.cmake"
+			"path" : "/home/erectus/Documents/Soccer Code/Robo/Espcode/Soccer/build/CMakeFiles/3.28.3/CMakeCXXCompiler.cmake"
 		},
 		{
 			"isExternal" : true,
@@ -805,7 +805,7 @@
 	"kind" : "cmakeFiles",
 	"paths" : 
 	{
-		"build" : "/home/erectus/Documents/Soccer Code/Robo/build",
+		"build" : "/home/erectus/Documents/Soccer Code/Robo/Espcode/Soccer/build",
 		"source" : "/home/erectus/Documents/Soccer Code/Robo/Ray_Sim"
 	},
 	"version" : 
