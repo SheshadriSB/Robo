@@ -2,9 +2,9 @@
 #include <PID_v1.h>
 
 struct{
-    float Velx;
-    float Vely;
-    float w;
+    int Velx;
+    int Vely;
+    int w;
     int Servo;
 }Joy;
 
@@ -20,6 +20,7 @@ struct{
 //Float Definition Starts
 #define SQRT3_2 0.86602540378
 #define HALF 0.5
+#define Deg_to_Rad 0.01745329252
 //Float Definition Ends
 
 SemaphoreHandle_t xSemaphore;
@@ -28,7 +29,7 @@ SemaphoreHandle_t xSemaphore;
 float MotorRpm[3] = {0, 0, 0};
 long prevT[3] = {0, 0, 0};
 int Dir[3]={1,1,1}; 
-float Motor_Vel[3]={0.0,0.0,0.0};
+int Motor_Vel[3]={0.0,0.0,0.0};
 uint8_t MotorPWM[3]={0,0,0};
 float Command_Rpm[3]={0.0,0.0,0.0};
 
@@ -43,10 +44,6 @@ void IRAM_ATTR updateMotorRPM2();
 void IRAM_ATTR updateMotorRPM3();
 void Obtain_Normalize_JoyData(void *parameter);
 void InvKinematics(void *parameter);
-float mapFloat(float x, float in_min, float in_max, float out_min, float out_max) {
-    return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
-}
-
  //Function Declaration Ends
 
 
@@ -102,9 +99,9 @@ void updateMotorRPM3() {
 void InvKinematics(void *parameters){    
     while(true){
         if(xSemaphoreTake(xSemaphore,portMAX_DELAY)){
-         Motor_Vel[0] = -Joy.Velx+Joy.w;
-         Motor_Vel[1] = HALF * Joy.Velx - SQRT3_2 * Joy.Vely +Joy.w;
-         Motor_Vel[2] = HALF * Joy.Velx + SQRT3_2 * Joy.Vely +Joy.w; 
+         Motor_Vel[0] = -Joy.Velx+(Joy.w*Deg_to_Rad);
+         Motor_Vel[1] = HALF * (float)Joy.Velx - SQRT3_2 * (float)Joy.Vely +((float)Joy.w*Deg_to_Rad);
+         Motor_Vel[2] = HALF * (float)Joy.Velx + SQRT3_2 * (float)Joy.Vely +((float)Joy.w*Deg_to_Rad); 
         xSemaphoreGive(xSemaphore);
         }
         vTaskDelay(pdMS_TO_TICKS(10));
@@ -118,9 +115,9 @@ void Obtain_Normalize_JoyData(void *parameter) {
             Joy.Velx = RemoteXY.joystick_01_x ;
             Joy.Vely = RemoteXY.joystick_01_y;
             if(RemoteXY.button_05==1)
-            Joy.w=30;
+            Joy.w=3000;
             else if(RemoteXY.button_06==1)
-            Joy.w=-30;
+            Joy.w=-3000;
             else
             Joy.w=0;
             xSemaphoreGive(xSemaphore);
