@@ -1,10 +1,11 @@
 import serial
 import time
 import pandas as pd
+import matplotlib.pyplot as plt
 import os
 
 # Configure the serial port
-port = "/dev/ttyUSB0"  # Change to the correct port
+port = "/dev/ttyUSB1"  # Change to the correct port
 baudrate = 115200
 ser = serial.Serial(port, baudrate, timeout=1)
 
@@ -46,8 +47,29 @@ ser.close()
 # Convert the data to a DataFrame
 df = pd.DataFrame(data, columns=["Frequency", "DutyCycle", "Run", "RPM"])
 
-# Create a CSV file
-output_csv = "pwm_vs_rpm1.csv"
-df.to_csv(output_csv, index=False)
-print(f"Data saved to {output_csv}")
+# Create an output directory
+output_dir = "plots"
+os.makedirs(output_dir, exist_ok=True)
 
+# Plot graphs for each frequency and run
+unique_frequencies = sorted(df["Frequency"].unique())
+unique_runs = sorted(df["Run"].unique())
+
+for freq in unique_frequencies:
+    for run in unique_runs:
+        subset = df[(df["Frequency"] == freq) & (df["Run"] == run)]
+        plt.figure(figsize=(8, 6))
+        plt.plot(subset["DutyCycle"], subset["RPM"], marker="o", label=f"Run {int(run)}")
+        plt.title(f"Frequency: {int(freq)} Hz, Run: {int(run)}")
+        plt.xlabel("Duty Cycle (%)")
+        plt.ylabel("RPM")
+        plt.grid()
+        plt.legend()
+
+        # Save the plot
+        filename = os.path.join(output_dir, f"Freq_{int(freq)}Hz_Run_{int(run)}.png")
+        plt.savefig(filename, dpi=300)
+        print(f"Saved plot: {filename}")
+        plt.close()
+
+print("All plots saved successfully!")

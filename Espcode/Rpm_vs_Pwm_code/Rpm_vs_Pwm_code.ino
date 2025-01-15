@@ -26,7 +26,7 @@ void setup() {
 }
 
 void loop() {
-  for (int freq =3000 ; freq <= 6000; freq += 250) {
+  for (int freq =8000 ; freq <=12000; freq += 500) {
     for (int run = 0; run < 1; run++) { // Repeat 3 times for each frequency
       ledcDetach(PWM_PIN);
       ledcAttach(PWM_PIN, freq, 8); // Setup PWM for given frequency
