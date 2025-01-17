@@ -10,12 +10,12 @@ struct {
 } Joy;
 
 // Pin Number Definitions
-#define Motor1_Enc_CHA 32
-#define Motor1_Enc_CHB 33
-#define Motor2_Enc_CHA 34
-#define Motor2_Enc_CHB 35
-#define Motor3_Enc_CHA 36
-#define Motor3_Enc_CHB 39
+#define Motor1_Enc_CHA 15
+#define Motor1_Enc_CHB 36
+#define Motor2_Enc_CHA 35
+#define Motor2_Enc_CHB 32
+#define Motor3_Enc_CHA 25
+#define Motor3_Enc_CHB 26
 #define Motor1_IN_1 4
 #define Motor1_IN_2 16
 #define Motor1_EN 17
@@ -25,7 +25,12 @@ struct {
 #define Motor3_IN_1 12
 #define Motor3_IN_2 14
 #define Motor3_EN 13
-
+// PWM Channel Configurations
+#define PWM_FREQ 5000  // Frequency in Hz
+#define PWM_RES 8      // Resolution (0–255 for 8-bit)
+#define PWM_CHANNEL_1 0
+#define PWM_CHANNEL_2 1
+#define PWM_CHANNEL_3 2
 // Constants
 #define SQRT3_2 0.86602540378
 #define HALF 0.5
@@ -51,10 +56,11 @@ void Obtain_Normalize_JoyData(void *parameter);
 void InvKinematics(void *parameter);
 void pinDeclaration();
 void Move_Motor(void *parameter);
+void PIDControl(void *parameter);
 //PID DECLARATION
 
 double Setpoint[3], Input[3], Output[3];
-double Kp = 2.0, Ki = 5.0, Kd = 1.0;
+double Kp = 0.5, Ki = 1.0, Kd = 0.0;
 PID myPID1(&Input[0], &Output[0], &Setpoint[0], Kp, Ki, Kd, DIRECT);
 PID myPID2(&Input[1], &Output[1], &Setpoint[1], Kp, Ki, Kd, DIRECT);
 PID myPID3(&Input[2], &Output[2], &Setpoint[2], Kp, Ki, Kd, DIRECT);
@@ -75,10 +81,10 @@ pinDeclaration();
 
     xSemaphore = xSemaphoreCreateMutex();
     if (xSemaphore != NULL) {
-        xTaskCreatePinnedToCore(InvKinematics, "InvKinematics", 4096, NULL, 1, NULL, 0);
-       // xTaskCreatePinnedToCore(Obtain_Normalize_JoyData, "NormalizeJoyData", 4096, NULL, 1, NULL, 1);
-        xTaskCreatePinnedToCore(Move_Motor, "MotorMove", 4096, NULL, 1, NULL, 0);
-
+        xTaskCreatePinnedToCore(InvKinematics, "InvKinematics", 1000, NULL, 1, NULL, 0);
+        xTaskCreatePinnedToCore(Obtain_Normalize_JoyData, "NormalizeJoyData", 4096, NULL, 1, NULL, 1);
+        xTaskCreatePinnedToCore(Move_Motor, "Motor", 4096, NULL, 1, NULL, 1);
+        xTaskCreatePinnedToCore(PIDControl, "PID", 4096, NULL, 1, NULL, 1);
     } else {
         Serial.println("Failed to create mutex.");
     }
@@ -98,20 +104,23 @@ pinMode(Motor2_IN_1,OUTPUT);
 pinMode(Motor2_IN_2,OUTPUT);
 pinMode(Motor3_IN_1,OUTPUT);
 pinMode(Motor3_IN_2,OUTPUT);
+    ledcSetup(PWM_CHANNEL_1, PWM_FREQ, PWM_RES);
+    ledcAttachPin(Motor1_EN, PWM_CHANNEL_1);
+
+    ledcSetup(PWM_CHANNEL_2, PWM_FREQ, PWM_RES);
+    ledcAttachPin(Motor2_EN, PWM_CHANNEL_2);
+
+    ledcSetup(PWM_CHANNEL_3, PWM_FREQ, PWM_RES);
+    ledcAttachPin(Motor3_EN, PWM_CHANNEL_3);
 }
 
 void loop() {
-Serial.print(MotorPWM[0]);
+Serial.print(MotorRpm[0]);
 Serial.print(",");
-Serial.print(MotorPWM[1]);
+Serial.print(MotorRpm[1]);
 Serial.print(",");
-Serial.print(MotorPWM[2]);
-Serial.print(",");
-Serial.print(Command_Rpm[0]);
-Serial.print(",");
-Serial.print(Command_Rpm[1]);
-Serial.print(",");
-Serial.println(Command_Rpm[2]);
+Serial.println(MotorRpm[2]);
+
 
 }
 
@@ -119,7 +128,7 @@ void updateMotorRPM1() {
     long currT = micros();
     if (currT != prevT[0]) { // Avoid division by zero
         Dir[0] = (digitalRead(Motor1_Enc_CHB) == HIGH) ? 1 : -1;
-        MotorRpm[0] = Dir[0] *Ratiotofindrpm / (currT - prevT[0]);
+        MotorRpm[0] =Ratiotofindrpm / (currT - prevT[0]);
         prevT[0] = currT;
     }
 }
@@ -128,7 +137,7 @@ void updateMotorRPM2() {
     long currT = micros();
     if (currT != prevT[1]) { // Avoid division by zero
         Dir[1] = (digitalRead(Motor1_Enc_CHB) == HIGH) ? 1 : -1;
-        MotorRpm[1] = Dir[1] * Ratiotofindrpm / (currT - prevT[1]);
+        MotorRpm[1] =Ratiotofindrpm / (currT - prevT[1]);
         prevT[1] = currT;
     }
 }
@@ -137,7 +146,7 @@ void updateMotorRPM3() {
     long currT = micros();
     if (currT != prevT[2]) { // Avoid division by zero
         Dir[2] = (digitalRead(Motor1_Enc_CHB) == HIGH) ? 1 : -1;
-        MotorRpm[2] = Dir[2] * Ratiotofindrpm / (currT - prevT[2]);
+        MotorRpm[2] =Ratiotofindrpm / (currT - prevT[2]);
         prevT[2] = currT;
     }
 }
@@ -150,10 +159,9 @@ void InvKinematics(void *parameters) {
             Command_Rpm[0]=RPM_VEL_RATIO*Command_Motor_Vel[0];
             Command_Rpm[1]=RPM_VEL_RATIO*Command_Motor_Vel[1];
             Command_Rpm[2]=RPM_VEL_RATIO*Command_Motor_Vel[2];
-
                     xSemaphoreGive(xSemaphore);
         }
-        vTaskDelay(pdMS_TO_TICKS(10));
+        vTaskDelay(pdMS_TO_TICKS(100));
     }
 }
 
@@ -167,7 +175,6 @@ void Obtain_Normalize_JoyData(void *parameter) {
             xSemaphoreGive(xSemaphore);
             RemoteXY.value_01 = Joy.Velx;
             RemoteXY.value_02 = Joy.Vely;
-                    xSemaphoreGive(xSemaphore);
 
         }
         vTaskDelay(pdMS_TO_TICKS(10));
@@ -212,16 +219,10 @@ void Move_Motor(void *parameter) {
                 digitalWrite(Motor3_IN_1, LOW);
                 digitalWrite(Motor3_IN_2, LOW);
             }
-
-            // Calculate PWM values
-            MotorPWM[0] = abs(Command_Rpm[0]) / 2;
-            MotorPWM[1] = abs(Command_Rpm[1]) / 2;
-            MotorPWM[2] = abs(Command_Rpm[2]) / 2;
-
             // Write PWM
-            analogWrite(Motor1_EN, MotorPWM[0]);
-            analogWrite(Motor2_EN, MotorPWM[1]);
-            analogWrite(Motor3_EN, MotorPWM[2]);
+    ledcWrite(PWM_CHANNEL_1, MotorPWM[0]);
+    ledcWrite(PWM_CHANNEL_2, MotorPWM[1]);
+    ledcWrite(PWM_CHANNEL_3, MotorPWM[2]);
 
             xSemaphoreGive(xSemaphore);
         }
@@ -229,7 +230,7 @@ void Move_Motor(void *parameter) {
     }
 }
 
-/*
+
 void PIDControl(void *parameter) {
     while (true) {
         if (xSemaphoreTake(xSemaphore, portMAX_DELAY)) {
@@ -239,24 +240,19 @@ void PIDControl(void *parameter) {
             Input[2] = MotorRpm[2];
 
             // Update PID Setpoints
-            Setpoint[0] = Command_Rpm[0];
-            Setpoint[1] = Command_Rpm[1];
-            Setpoint[2] = Command_Rpm[2];
-
+            Setpoint[0] = abs(Command_Rpm[0]);
+            Setpoint[1] = abs(Command_Rpm[1]);
+            Setpoint[2] = abs(Command_Rpm[2]);
+            //OUTPUT
+            MotorPWM[0]=Output[0];
+            MotorPWM[1]=Output[1];
+            MotorPWM[2]=Output[2];
             // Compute PID Outputs
             myPID1.Compute();
             myPID2.Compute();
             myPID3.Compute();
 
-            // Set motor PWM using the PID outputs
-            
-            Command_Dir[0]=Command_Motor_Vel[0]< 0 ? false:true;
-            Command_Dir[1]=Command_Motor_Vel[1]< 0 ? false:true;
-            Command_Dir[2]=Command_Motor_Vel[2]< 0 ? false:true;
 
-            analogWrite(MotorPWM[0], (int)Output[0]);
-            analogWrite(MotorPWM[1], (int)Output[1]);
-            analogWrite(MotorPWM[2], (int)Output[2]);
 
             xSemaphoreGive(xSemaphore);
         }
@@ -264,4 +260,4 @@ void PIDControl(void *parameter) {
         vTaskDelay(pdMS_TO_TICKS(10)); // Adjust as needed
     }
 }
-*/
+
