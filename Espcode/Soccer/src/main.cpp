@@ -26,7 +26,7 @@ struct {
 #define Motor3_IN_2 14
 #define Motor3_EN 13
 // PWM Channel Configurations
-#define PWM_FREQ 5000  // Frequency in Hz
+#define PWM_FREQ 7000  // Frequency in Hz
 #define PWM_RES 8      // Resolution (0–255 for 8-bit)
 #define PWM_CHANNEL_1 0
 #define PWM_CHANNEL_2 1
@@ -60,7 +60,7 @@ void PIDControl(void *parameter);
 //PID DECLARATION
 
 double Setpoint[3], Input[3], Output[3];
-double Kp = 0.5, Ki = 1.0, Kd = 0.0;
+double Kp = 0.8, Ki = 1.0, Kd = 0.0;
 PID myPID1(&Input[0], &Output[0], &Setpoint[0], Kp, Ki, Kd, DIRECT);
 PID myPID2(&Input[1], &Output[1], &Setpoint[1], Kp, Ki, Kd, DIRECT);
 PID myPID3(&Input[2], &Output[2], &Setpoint[2], Kp, Ki, Kd, DIRECT);
@@ -119,7 +119,13 @@ Serial.print(MotorRpm[0]);
 Serial.print(",");
 Serial.print(MotorRpm[1]);
 Serial.print(",");
-Serial.println(MotorRpm[2]);
+Serial.print(MotorRpm[2]);
+Serial.print(",");
+Serial.print(Setpoint[0]);
+Serial.print(",");
+Serial.print(Setpoint[1]);
+Serial.print(",");
+Serial.println(Setpoint[2]);
 
 
 }
@@ -136,7 +142,7 @@ void updateMotorRPM1() {
 void updateMotorRPM2() {
     long currT = micros();
     if (currT != prevT[1]) { // Avoid division by zero
-        Dir[1] = (digitalRead(Motor1_Enc_CHB) == HIGH) ? 1 : -1;
+        Dir[1] = (digitalRead(Motor2_Enc_CHB) == HIGH) ? 1 : -1;
         MotorRpm[1] =Ratiotofindrpm / (currT - prevT[1]);
         prevT[1] = currT;
     }
@@ -145,7 +151,7 @@ void updateMotorRPM2() {
 void updateMotorRPM3() {
     long currT = micros();
     if (currT != prevT[2]) { // Avoid division by zero
-        Dir[2] = (digitalRead(Motor1_Enc_CHB) == HIGH) ? 1 : -1;
+        Dir[2] = (digitalRead(Motor3_Enc_CHB) == HIGH) ? 1 : -1;
         MotorRpm[2] =Ratiotofindrpm / (currT - prevT[2]);
         prevT[2] = currT;
     }
