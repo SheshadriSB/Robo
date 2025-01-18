@@ -204,8 +204,8 @@ void Obtain_Normalize_JoyData(void *parameter) {
     while (true) {
         RemoteXY_Handler();
         if (xSemaphoreTake(xSemaphore, portMAX_DELAY)) {
-            Joy.Velx = -RemoteXY.joystick_01_x;
-            Joy.Vely = RemoteXY.joystick_01_y;
+            Joy.Velx = -RemoteXY.joystick_01_x/2;
+            Joy.Vely = RemoteXY.joystick_01_y/2;
             Joy.w = RemoteXY.button_05 ? 3000 : (RemoteXY.button_06 ? -3000 : 0);
             xSemaphoreGive(xSemaphore);
             RemoteXY.value_01 = Joy.Velx;
