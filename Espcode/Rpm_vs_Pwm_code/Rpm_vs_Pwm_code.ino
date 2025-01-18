@@ -1,93 +1,60 @@
-#define PWM_PIN 13
-#define DIR_PIN1 12
-#define DIR_PIN2 14
-#define ENCODER_PIN 32
-#define PULSES_PER_REV 210
+#define ENCODER_A 35 // Pin for encoder channel A (must be interrupt-capable)
+#define ENCODER_B 32 // Pin for encoder channel B (must be digital input)
+#define PULSES_PER_REVOLUTION 600 // Adjust based on your encoder specification
 
-volatile int pulseCount = 0;
-
-void IRAM_ATTR countPulse() {
-  pulseCount++;
-}
+volatile long pulseCount = 0; // Total pulse count
+volatile int direction = 1;  // 1 for CW, -1 for CCW
+volatile unsigned long lastTimeMicros = 0; // Time of the last pulse in microseconds
+volatile float rpm = 0.0; // Calculated RPM
 
 void setup() {
-  Serial.begin(115200);
-
-  pinMode(ENCODER_PIN, INPUT_PULLUP);
-  attachInterrupt(digitalPinToInterrupt(ENCODER_PIN), countPulse, RISING);
-
-  pinMode(DIR_PIN1, OUTPUT);
-  pinMode(DIR_PIN2, OUTPUT);
-
-  digitalWrite(DIR_PIN1, HIGH);
-  digitalWrite(DIR_PIN2, LOW);
-
-  Serial.println("Starting data collection");
+  pinMode(ENCODER_A, INPUT_PULLUP);
+  pinMode(ENCODER_B, INPUT_PULLUP);
+  
+  // Attach interrupts for channel A
+  attachInterrupt(digitalPinToInterrupt(ENCODER_A), encoderISR, CHANGE);
+  
+  Serial.begin(9600);
 }
 
 void loop() {
-  for (int freq =8000 ; freq <=12000; freq += 500) {
-    for (int run = 0; run < 1; run++) { // Repeat 3 times for each frequency
-      ledcDetach(PWM_PIN);
-      ledcAttach(PWM_PIN, freq, 8); // Setup PWM for given frequency
-      ledcWrite(PWM_PIN, 0); // Stop the motor initially
-      delay(2000); // Pause before measurement
+  // Display the current RPM and direction
+  noInterrupts(); // Temporarily disable interrupts to access shared variables
+  float currentRPM = rpm;
+  int currentDirection = direction;
+  interrupts(); // Re-enable interrupts
 
-      for (int dutyValue = 0; dutyValue <= 255; dutyValue += 1) {
-        ledcWrite(PWM_PIN, dutyValue);
-
-        unsigned long startTime = millis();
-        pulseCount = 0;
-
-        while (millis() - startTime < 100) {
-          // Wait 100 ms for stable RPM measurement
-        }
-
-        noInterrupts();
-        float motorRPM = (pulseCount * 600.0) / PULSES_PER_REV; // RPM calculation
-        interrupts();
-
-        Serial.print(freq);
-        Serial.print(",");
-        Serial.print(dutyValue);
-        Serial.print(",");
-        Serial.print(run + 1); // Run number
-        Serial.print(",");
-        Serial.println(motorRPM);
-      }
-
-
-
-        for (int dutyValue = 255; dutyValue >= 0; dutyValue -= 1) {
-        ledcWrite(PWM_PIN, dutyValue);
-
-        unsigned long startTime = millis();
-        pulseCount = 0;
-
-        while (millis() - startTime < 100) {
-          // Wait 100 ms for stable RPM measurement
-        }
-
-        noInterrupts();
-        float motorRPM = (pulseCount * 600.0) / PULSES_PER_REV; // RPM calculation
-        interrupts();
-
-        Serial.print(freq);
-        Serial.print(",");
-        Serial.print(dutyValue);
-        Serial.print(",");
-        Serial.print(run + 1); // Run number
-        Serial.print(",");
-        Serial.println(motorRPM);
-      }
-
-
-
-
-    }
+  Serial.print("RPM: ");
+  Serial.print(currentRPM);
+  Serial.print(" Direction: ");
+  if (currentDirection == 1) {
+    Serial.println("CW");
+  } else {
+    Serial.println("CCW");
   }
 
-  Serial.println("Data collection finished");
-  delay(5000); // Delay before restarting
-  ESP.restart(); // Restart ESP32
+  delay(5); // Update every 500ms (optional)
+}
+
+// Interrupt Service Routine for encoder channel A
+void encoderISR() {
+  unsigned long currentTimeMicros = micros(); // Get current time in microseconds
+  int stateA = digitalRead(ENCODER_A);
+  int stateB = digitalRead(ENCODER_B);
+
+  // Determine direction based on A and B signals
+  if (stateA == stateB) {
+    direction = -1; // Counterclockwise
+  } else {
+    direction = 1; // Clockwise
+  }
+
+  // Calculate RPM based on time between pulses
+  if (lastTimeMicros > 0) {
+    unsigned long timeDeltaMicros = currentTimeMicros - lastTimeMicros;
+    rpm = (60.0 * 1e6) / (PULSES_PER_REVOLUTION * timeDeltaMicros);
+  }
+
+  lastTimeMicros = currentTimeMicros; // Update the last pulse time
+  pulseCount += direction; // Increment or decrement pulse count based on direction
 }
