@@ -8,7 +8,6 @@ struct {
     int w;
     int Servo;
 } Joy;
-
 // Pin Number Definitions
 #define Motor1_Enc_CHA 27
 #define Motor1_Enc_CHB 15
@@ -38,30 +37,23 @@ struct {
 #define RPM_VEL_RATIO 3.351955
 #define Ratiotofindrpm 142857.142857
 SemaphoreHandle_t xSemaphore;
-
 // Variables
-
 int MotorPWM[3] = {0, 0, 0};
 float Command_Rpm[3] = {0.0, 0.0, 0.0};
-
-
-
 volatile float MotorRpm[3] = {0, 0, 0};
 long prevT[3]={0,0,0};
 int Dir[3]={0,0,0};
 long int PulseCount[3]={0,0,0};
-
 // Function Declarations
 void IRAM_ATTR updateMotorRPM1();
 void IRAM_ATTR updateMotorRPM2();
 void IRAM_ATTR updateMotorRPM3();
-void Obtain_Normalize_JoyData(void *parameter);
-void InvKinematics(void *parameter);
+void Obtain_Normalize_JoyData();
+void InvKinematics();
 void pinDeclaration();
-void Move_Motor(void *parameter);
-void PIDControl(void *parameter);
+void Move_Motor();
+void PIDControl();
 //PID DECLARATION
-
 double Setpoint[3], Input[3], Output[3];
 double Kp[3] ={ 0.6,0.6,0.6};
 double Ki[3] = {2.0,2.0,2.0};
@@ -86,13 +78,10 @@ pinDeclaration();
 
     xSemaphore = xSemaphoreCreateMutex();
     if (xSemaphore != NULL) {
-        xTaskCreatePinnedToCore(InvKinematics, "InvKinematics", 1000, NULL, 1, NULL, 0);
-        xTaskCreatePinnedToCore(Obtain_Normalize_JoyData, "NormalizeJoyData", 4096, NULL, 1, NULL, 1);
-        xTaskCreatePinnedToCore(Move_Motor, "Motor", 4096, NULL, 1, NULL, 1);
-        xTaskCreatePinnedToCore(PIDControl, "PID", 4096, NULL, 1, NULL, 1);
     } else {
         Serial.println("Failed to create mutex.");
     }
+
     // Pin Mode and Interrupt Setup
     pinMode(Motor1_Enc_CHA, INPUT_PULLUP);
     pinMode(Motor1_Enc_CHB, INPUT_PULLDOWN);
@@ -123,49 +112,36 @@ pinMode(Motor3_IN_2,OUTPUT);
 }
 
 void loop() {
-/*Serial.print(MotorRpm[0]);
-Serial.print(",");
-Serial.print(MotorRpm[1]);
-Serial.print(",");
-Serial.print(MotorRpm[2]);
-Serial.print(",");
-Serial.print(Setpoint[0]);
-Serial.print(",");
-Serial.print(Setpoint[1]);
-Serial.print(",");
-Serial.println(Setpoint[2]);*/
-
-
+            RemoteXY_Handler();
+            Obtain_Normalize_JoyData();
+            InvKinematics();
+            PIDControl();
+            Move_Motor();
 }
 
 void updateMotorRPM1() {
   unsigned long currT = micros(); 
   int stateA = digitalRead(Motor1_Enc_CHA);
   int stateB = digitalRead(Motor1_Enc_CHB);
-  if (stateA == stateB) {
+  if (stateA == stateB) 
     Dir[0] = 1; 
-  } else {
+   else 
     Dir[0] = -1; 
-  }
-  if (currT > 0) {
+  if (currT > 0) 
     MotorRpm[0] =Dir[0]*Ratiotofindrpm / (currT - prevT[0]);
-  }
   prevT[0] = currT; 
   PulseCount[0] += Dir[0]; 
 }
-
 void updateMotorRPM2() {
   unsigned long currT = micros();
   int stateA = digitalRead(Motor2_Enc_CHA);
   int stateB = digitalRead(Motor2_Enc_CHB);
-  if (stateA == stateB) {
+  if (stateA == stateB) 
     Dir[1] = 1;
-  } else {
+   else 
     Dir[1] = -1;
-  }
-  if (currT > prevT[1]) {
+  if (currT > prevT[1]) 
     MotorRpm[1] = Dir[1] * Ratiotofindrpm / (currT - prevT[1]);
-  }
   prevT[1] = currT;
   PulseCount[1] += Dir[1];
 }
@@ -174,19 +150,16 @@ void updateMotorRPM3() {
   unsigned long currT = micros();
   int stateA = digitalRead(Motor3_Enc_CHA);
   int stateB = digitalRead(Motor3_Enc_CHB);
-  if (stateA == stateB) {
+  if (stateA == stateB) 
     Dir[2] = 1;
-  } else {
+   else 
     Dir[2] = -1;
-  }
-  if (currT > prevT[2]) {
+  if (currT > prevT[2]) 
     MotorRpm[2] = Dir[2] * Ratiotofindrpm / (currT - prevT[2]);
-  }
   prevT[2] = currT;
   PulseCount[2] += Dir[2];
 }
-void InvKinematics(void *parameters) {
-    while (true) {
+void InvKinematics() {
         if (xSemaphoreTake(xSemaphore, portMAX_DELAY)) {
             Command_Rpm[0] = -Joy.Velx + (Joy.w * Deg_to_Rad);
             Command_Rpm[1] =( HALF * Joy.Velx) - (SQRT3_2 * Joy.Vely) + (Joy.w * Deg_to_Rad);
@@ -196,28 +169,19 @@ void InvKinematics(void *parameters) {
             Command_Rpm[2]*=RPM_VEL_RATIO;
                     xSemaphoreGive(xSemaphore);
         }
-        vTaskDelay(pdMS_TO_TICKS(10));
-    }
+    
 }
-
-void Obtain_Normalize_JoyData(void *parameter) {
-    while (true) {
-        RemoteXY_Handler();
+void Obtain_Normalize_JoyData() {
         if (xSemaphoreTake(xSemaphore, portMAX_DELAY)) {
-            Joy.Velx = -RemoteXY.joystick_01_x/2;
-            Joy.Vely = RemoteXY.joystick_01_y/2;
-            Joy.w = RemoteXY.button_05 ? 3000 : (RemoteXY.button_06 ? -3000 : 0);
+            Joy.Velx = RemoteXY.joystick_01_x;
+            Joy.Vely = -RemoteXY.joystick_01_y;
+            Joy.w = RemoteXY.button_05 ? -3000 : (RemoteXY.button_06 ? 3000 : 0);
             xSemaphoreGive(xSemaphore);
             RemoteXY.value_01 = Joy.Velx;
-            RemoteXY.value_02 = Joy.Vely;
-
-        }
-        vTaskDelay(pdMS_TO_TICKS(10));
+            RemoteXY.value_02 = Joy.Vely;   
     }
 }
-
-void Move_Motor(void *parameter) {
-    while (true) {
+void Move_Motor() {
         if (xSemaphoreTake(xSemaphore, portMAX_DELAY)) {
             // Motor 1 Direction
             if (MotorPWM[0] > 41) {
@@ -260,49 +224,24 @@ void Move_Motor(void *parameter) {
     ledcWrite(PWM_CHANNEL_3, abs(MotorPWM[2]));
 
             xSemaphoreGive(xSemaphore);
-        }
-        vTaskDelay(pdMS_TO_TICKS(10));
+        
     }
 }
-
-
-void PIDControl(void *parameter) {
-    while (true) {
+void PIDControl() {
         if (xSemaphoreTake(xSemaphore, portMAX_DELAY)) {
             // Update PID Inputs
             Input[0] = MotorRpm[0];
             Input[1] = MotorRpm[1];
             Input[2] = MotorRpm[2];
-
             // Update PID Setpoints
             Setpoint[0] = Command_Rpm[0];
             Setpoint[1] = Command_Rpm[1];
             Setpoint[2] = Command_Rpm[2];
 
-Serial.print(Input[0]);
-Serial.print(",");
-Serial.print(Input[1]);
-Serial.print(",");
-Serial.print(Input[2]);
-Serial.print(",");
-Serial.print(Setpoint[0]);
-Serial.print(",");
-Serial.print(Setpoint[1]);
-Serial.print(",");
-Serial.print(Setpoint[2]);
-Serial.print(",");
             // Compute PID Outputs
             myPID1.Compute();
             myPID2.Compute();
             myPID3.Compute();
-;
-Serial.print(Output[0]);
-Serial.print(",");
-Serial.print(Output[1]);
-Serial.print(",");
-Serial.println(Output[2]);
-
-
             //OUTPUT
             MotorPWM[0]=Output[0];
             MotorPWM[1]=Output[1];
@@ -312,7 +251,6 @@ Serial.println(Output[2]);
             xSemaphoreGive(xSemaphore);
         }
 
-        vTaskDelay(pdMS_TO_TICKS(10)); // Adjust as needed
     }
-}
+
 
